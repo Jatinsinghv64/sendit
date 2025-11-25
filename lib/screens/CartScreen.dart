@@ -70,7 +70,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // Changed 'CartItem' to 'dynamic' to fix the import casing mismatch error
-  // (product.dart vs Product.dart)
+  // (product.dart vs product.dart)
   Widget _buildCartItem(BuildContext context, dynamic item, CartProvider cart) {
     return Container(
       decoration: BoxDecoration(
