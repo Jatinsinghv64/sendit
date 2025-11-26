@@ -19,20 +19,19 @@ class Product {
     required this.category,
   });
 
-  // Factory constructor for safe data parsing from Firestore
   factory Product.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return Product(
       id: doc.id,
-      name: data['name'] ?? 'Unknown Product',
-      description: data['description'] ?? '',
-      // Robust parsing: Handle both int and double for price
+      name: data['name'] as String? ?? 'Unknown Product',
+      description: data['description'] as String? ?? '',
+      // Safely handle both Int and Double from Firestore
       price: (data['price'] is int)
           ? (data['price'] as int).toDouble()
           : (data['price'] as double? ?? 0.0),
-      unit: data['unit'] ?? 'pcs',
-      imageUrl: data['imageUrl'] ?? '',
-      category: data['category'] ?? 'General',
+      unit: data['unit'] as String? ?? 'pcs',
+      imageUrl: data['imageUrl'] as String? ?? '',
+      category: data['category'] as String? ?? 'General',
     );
   }
 }

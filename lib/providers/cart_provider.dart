@@ -35,14 +35,17 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void removeSingleItem(String productId) {
+  // Fixed: Added optional 'force' parameter to support swipe-to-dismiss
+  void removeSingleItem(String productId, {bool force = false}) {
     if (!_items.containsKey(productId)) return;
-    if (_items[productId]!.quantity > 1) {
+
+    if (!force && _items[productId]!.quantity > 1) {
       _items.update(
           productId,
               (existing) => CartItem(
               product: existing.product, quantity: existing.quantity - 1));
     } else {
+      // Remove completely if quantity is 1 OR if force is true
       _items.remove(productId);
     }
     notifyListeners();
@@ -53,7 +56,7 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // NEW: Save Order to Firestore
+  // Save Order to Firestore
   Future<void> placeOrder() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("User not logged in");
