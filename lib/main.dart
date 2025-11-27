@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:sendit/providers/AddressProvider.dart';
 import 'package:sendit/providers/favourite.dart';
 import 'package:sendit/themes.dart';
 import 'Main_Navigation.dart';
 import 'firebase_options.dart';
 import 'auth_provider.dart';
 import 'providers/cart_provider.dart';
-
 import 'screens/login_screen.dart';
 
 void main() async {
@@ -25,7 +25,9 @@ class SendItApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
-        ChangeNotifierProvider(create: (_) => FavoritesProvider()), // Add this
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+        // Register AddressProvider
+        ChangeNotifierProvider(create: (_) => AddressProvider()..init()),
       ],
       child: Consumer<AuthProvider>(
           builder: (context, auth, _) {

@@ -2,20 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
-import '../themes.dart'; // Imports AppTheme
+import '../providers/favourite.dart';
+import '../themes.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
+  final String? heroSuffix; // Fixes Duplicate Hero Tag error
 
-  const ProductCard({super.key, required this.product});
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.heroSuffix,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Calculate discount if needed
+    // Calculate discount
     final double originalPrice = product.originalPrice ?? (product.price * 1.2);
     final int discount = product.discount > 0
         ? product.discount
         : ((originalPrice - product.price) / originalPrice * 100).round();
+
+    // Create a unique tag based on the suffix
+    final String heroTag = heroSuffix != null
+        ? "${product.id}-$heroSuffix"
+        : product.id;
 
     return GestureDetector(
       onTap: () => _showProductBottomSheet(context, product),
@@ -36,9 +47,10 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Edge-to-Edge Image Area
+            // 1. Top Section: Image & Icons
             Stack(
               children: [
+                // Product Image with Unique Hero Tag
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
                   child: Container(
@@ -46,9 +58,12 @@ class ProductCard extends StatelessWidget {
                     width: double.infinity,
                     color: Colors.white,
                     child: product.imageUrl.isNotEmpty
-                        ? Image.network(
-                      product.imageUrl,
-                      fit: BoxFit.contain,
+                        ? Hero(
+                      tag: heroTag, // <--- Key Fix Here
+                      child: Image.network(
+                        product.imageUrl,
+                        fit: BoxFit.contain,
+                      ),
                     )
                         : const Icon(Icons.image_not_supported, color: Colors.grey),
                   ),
@@ -74,6 +89,35 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                // Favorite Icon
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Consumer<FavoritesProvider>(
+                    builder: (context, fav, child) {
+                      final isFavorite = fav.isFavorite(product.id);
+                      return GestureDetector(
+                        onTap: () => fav.toggleFavorite(product),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.8),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)
+                              ]
+                          ),
+                          child: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
+                            color: isFavorite ? AppTheme.qcDiscountRed : Colors.grey[400],
+                            size: 18,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
 
                 // Delivery Tag
                 Positioned(
@@ -135,7 +179,7 @@ class ProductCard extends StatelessWidget {
                       ],
                     ),
 
-                    // 3. Price and Quantity Section
+                    // 3. Price and Add Button
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -163,7 +207,6 @@ class ProductCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
 
-                        // Smart Add Button
                         Consumer<CartProvider>(
                           builder: (context, cart, child) {
                             final int quantity = cart.items.containsKey(product.id)
@@ -268,7 +311,6 @@ class ProductCard extends StatelessWidget {
               Text(product.description.isNotEmpty ? product.description : "No description available.",
                   style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 20),
-              // Add Button Logic for Bottom Sheet
               SizedBox(
                 width: double.infinity,
                 child: Consumer<CartProvider>(
@@ -279,7 +321,7 @@ class ProductCard extends StatelessWidget {
                       onPressed: () => cart.addItem(product),
                       child: const Text("Add to Cart"),
                     )
-                        : _buildQuantityCounter(context, cart, quantity); // Reuse your counter
+                        : _buildQuantityCounter(context, cart, quantity);
                   },
                 ),
               ),

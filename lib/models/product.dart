@@ -71,3 +71,55 @@ class CartItem {
 
   double get total => product.price * quantity;
 }
+
+class UserAddress {
+  final String id;
+  final String label; // e.g., "Home", "Work"
+  final String fullName;
+  final String street;
+  final String city;
+  final String state;
+  final String zipCode;
+  final String phone;
+  final bool isDefault;
+
+  UserAddress({
+    required this.id,
+    required this.label,
+    required this.fullName,
+    required this.street,
+    required this.city,
+    required this.state,
+    required this.zipCode,
+    required this.phone,
+    this.isDefault = false,
+  });
+
+  factory UserAddress.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return UserAddress(
+      id: doc.id,
+      label: data['label'] ?? 'Home',
+      fullName: data['fullName'] ?? '',
+      street: data['street'] ?? '',
+      city: data['city'] ?? '',
+      state: data['state'] ?? '',
+      zipCode: data['zipCode'] ?? '',
+      phone: data['phone'] ?? '',
+      isDefault: data['isDefault'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'label': label,
+      'fullName': fullName,
+      'street': street,
+      'city': city,
+      'state': state,
+      'zipCode': zipCode,
+      'phone': phone,
+      'isDefault': isDefault,
+    };
+  }
+}
