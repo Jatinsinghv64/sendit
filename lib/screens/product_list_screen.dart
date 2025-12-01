@@ -23,9 +23,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
   // Selected index for the left sidebar
   int _selectedSidebarIndex = 0;
 
-  // To store dynamic sub-categories fetched from data
-  List<String> _subCategories = ["All"];
-
   // Filter States
   String _sortBy = "Relevance";
   String _selectedBrand = "All";
@@ -51,7 +48,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
               widget.title,
               style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            // Dynamic item count would ideally come from the stream, hardcoded for UI demo
             StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('products')
@@ -63,14 +59,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   // Filter locally to get accurate count for this screen
                   final count = snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    // Apply ALL filters here too to get accurate count
                     if (widget.searchQuery != "All" &&
                         data['category'] != widget.searchQuery &&
                         data['subCategory'] != widget.searchQuery &&
                         !(data['searchKeywords'] as List).contains(widget.searchQuery.toLowerCase())) {
                       return false;
                     }
-                    // Add other filters logic if needed for count accuracy
                     return true;
                   }).length;
 
@@ -121,7 +115,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       return Product.fromMap(doc.data() as Map<String, dynamic>);
                     }).toList();
 
-                    // 2. Filter by Main Category (e.g. "Winter")
+                    // 2. Filter by Main Category
                     if (widget.searchQuery != "All") {
                       allProducts = allProducts.where((p) {
                         return p.category == widget.searchQuery ||
@@ -143,8 +137,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     }
 
                     final selectedSubCat = currentSubCategories[_selectedSidebarIndex];
-
-                    var filteredProducts = allProducts; // Working list
+                    var filteredProducts = allProducts;
 
                     if (selectedSubCat != "All") {
                       filteredProducts = filteredProducts.where((p) => p.subCategory == selectedSubCat).toList();
@@ -195,16 +188,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2,
-                                    childAspectRatio: 0.58, // Adjusted ratio
+                                    childAspectRatio: 0.52, // Keep this ratio to prevent overflow
                                     mainAxisSpacing: 16,
                                     crossAxisSpacing: 12,
                                   ),
                                   itemCount: filteredProducts.length,
                                   itemBuilder: (context, index) {
-                                    // Pass showAddButton: false if needed, but here ProductCard handles it internally
-                                    // based on logic. But wait, user said "remove add button".
-                                    // Assuming user meant remove the *separate* add button at bottom of card
-                                    // and rely on the top right one. ProductCard implementation below handles this.
                                     return ProductCard(product: filteredProducts[index]);
                                   },
                                 ),
@@ -250,8 +239,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
           _buildDropdownFilter("Sort By", _sortBy, ["Relevance", "Price: Low to High", "Price: High to Low"], (val) => setState(() => _sortBy = val)),
           const SizedBox(width: 8),
-          // _buildDropdownFilter("Type", _selectedType, ["All", "Veg", "Non-Veg"], (val) => setState(() => _selectedType = val)),
-          // const SizedBox(width: 8),
           _buildDropdownFilter("Brand", _selectedBrand, ["All", "Amul", "Nestle", "Britannia"], (val) => setState(() => _selectedBrand = val)),
           const SizedBox(width: 8),
           _buildToggleFilter("Handpicked", Icons.thumb_up_alt, _showHandpicked, () => setState(() => _showHandpicked = !_showHandpicked)),
@@ -313,7 +300,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  // Pass dynamic list to sidebar
   Widget _buildSidebar(List<String> categories) {
     return Container(
       width: 90,
@@ -375,15 +361,58 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
+  // --- UPDATED ICON LOGIC FOR ALL CATEGORIES ---
   IconData _getIconForSubCat(String name) {
     name = name.toLowerCase();
+
+    // Main Categories
+    if (name == 'all') return Icons.grid_view;
+    if (name.contains('winter')) return Icons.ac_unit;
+    if (name.contains('wedding')) return Icons.volunteer_activism;
+    if (name.contains('gourmet')) return Icons.restaurant;
+    if (name.contains('electronics')) return Icons.electrical_services;
+    if (name.contains('fruits')) return Icons.eco;
+    if (name.contains('vegetables')) return Icons.spa;
+    if (name.contains('dairy')) return Icons.local_drink;
+
+    // Sub Categories - Winter
+    if (name.contains('blanket')) return Icons.bed;
+    if (name.contains('heater')) return Icons.wb_sunny;
+    if (name.contains('skin')) return Icons.face;
+    if (name.contains('food')) return Icons.soup_kitchen;
+
+    // Sub Categories - Wedding
+    if (name.contains('gift')) return Icons.card_giftcard;
+    if (name.contains('jewel')) return Icons.diamond;
+    if (name.contains('decor')) return Icons.celebration;
+    if (name.contains('essential')) return Icons.shopping_bag;
+
+    // Sub Categories - Gourmet
+    if (name.contains('cheese')) return Icons.breakfast_dining;
+    if (name.contains('chocolate')) return Icons.cake;
+    if (name.contains('imported')) return Icons.public;
+
+    // Sub Categories - Electronics
+    if (name.contains('headphone')) return Icons.headphones;
+    if (name.contains('charger')) return Icons.battery_charging_full;
+
+    // Sub Categories - Fruits/Veg/Dairy
+    if (name.contains('fresh')) return Icons.eco;
+    if (name.contains('exotic')) return Icons.sunny;
+    if (name.contains('daily')) return Icons.calendar_today;
+    if (name.contains('leafy')) return Icons.grass;
+    if (name.contains('milk')) return Icons.local_drink;
+    if (name.contains('butter')) return Icons.breakfast_dining;
+    if (name.contains('yogurt')) return Icons.icecream;
+
+    // Fallbacks (from your previous list)
     if (name.contains('snack')) return Icons.cookie;
     if (name.contains('bowl')) return Icons.rice_bowl;
     if (name.contains('plate')) return Icons.radio_button_unchecked;
     if (name.contains('jar')) return Icons.kitchen;
     if (name.contains('glass')) return Icons.local_drink;
     if (name.contains('tray')) return Icons.calendar_view_day;
-    if (name == 'all') return Icons.grid_view;
+
     return Icons.category;
   }
 
