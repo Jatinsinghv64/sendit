@@ -129,13 +129,13 @@ class ProfileScreen extends StatelessWidget {
                 // 2. Menu Section: Content
                 _buildSectionHeader("CONTENT"),
 
-                _buildMenuTile(
-                  context,
-                  icon: Icons.receipt_long_rounded,
-                  title: "My Orders",
-                  subtitle: "Track & reorder past purchases",
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReorderScreen())),
-                ),
+                // _buildMenuTile(
+                //   context,
+                //   icon: Icons.receipt_long_rounded,
+                //   title: "My Orders",
+                //   subtitle: "Track & reorder past purchases",
+                //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReorderScreen())),
+                // ),
 
                 _buildMenuTile(
                   context,
@@ -146,13 +146,13 @@ class ProfileScreen extends StatelessWidget {
                 ),
 
                 // Address Management Link
-                _buildMenuTile(
-                  context,
-                  icon: Icons.location_on_rounded,
-                  title: "Delivery Addresses",
-                  subtitle: "Manage your saved addresses",
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressListScreen())),
-                ),
+                // _buildMenuTile(
+                //   context,
+                //   icon: Icons.location_on_rounded,
+                //   title: "Delivery Addresses",
+                //   subtitle: "Manage your saved addresses",
+                //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressListScreen())),
+                // ),
 
                 const SizedBox(height: 12),
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
-import '../screens/CartScreen.dart';
+import '../screens/CartScreen.dart' hide CartProvider;
 
 
 class FloatingCartButton extends StatelessWidget {
@@ -13,12 +13,16 @@ class FloatingCartButton extends StatelessWidget {
       builder: (context, cart, child) {
         if (cart.itemCount == 0) return const SizedBox.shrink();
 
+        // Calculate total items and amount
+        final totalItems = cart.items.values.fold(0, (sum, item) => sum + item.quantity);
+        final totalAmount = cart.totalAmount;
+
         return Positioned(
           bottom: 16,
           left: 16,
           right: 16,
           child: Material(
-            color: const Color(0xFF2E7D32),
+            color: Theme.of(context).primaryColor,
             borderRadius: BorderRadius.circular(12),
             elevation: 8,
             child: InkWell(
@@ -33,23 +37,61 @@ class FloatingCartButton extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
+                    // Cart icon with badge
+                    Stack(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.shopping_cart, color: Colors.white, size: 20),
+                        ),
+                        if (totalItems > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                              child: Text(
+                                totalItems.toString(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Item count and total
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min, // Fixes overflow
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            "${cart.itemCount} ITEM${cart.itemCount > 1 ? 'S' : ''}",
+                            "$totalItems ITEM${totalItems > 1 ? 'S' : ''}",
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withOpacity(0.9),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
+                              letterSpacing: 0.5,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            "\$${cart.totalAmount.toStringAsFixed(2)}",
+                            "₹${totalAmount.toStringAsFixed(2)}",
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15,
@@ -59,16 +101,31 @@ class FloatingCartButton extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Text(
-                      "View Cart",
-                      style: TextStyle(
+
+                    // View Cart text
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            "View Cart",
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: Theme.of(context).primaryColor,
+                              size: 14),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_right, color: Colors.white),
                   ],
                 ),
               ),

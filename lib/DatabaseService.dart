@@ -1,128 +1,142 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/product.dart';
+
+import 'models/product.dart';
+
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // --- COLLECTIONS REFERENCES ---
-  CollectionReference get _productsRef => _db.collection('products');
-  CollectionReference get _ordersRef => _db.collection('orders');
-  CollectionReference get _categoriesRef => _db.collection('categories');
-
-  // --- PRODUCTS & CATEGORIES ---
-
-  // Get all products
+  // --- PRODUCTS ---
   Stream<List<Product>> getProducts() {
-    return _productsRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
-    });
-  }
-
-  // Get all categories
-  Stream<List<Map<String, dynamic>>> getCategories() {
-    return _categoriesRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
-    });
-  }
-
-  // --- ORDERS ---
-
-  // Create a new order
-  Future<void> createOrder(Map<String, dynamic> orderData) async {
-    try {
-      await _ordersRef.add(orderData);
-    } catch (e) {
-      print("Error placing order: $e");
-      throw Exception("Failed to place order.");
-    }
-  }
-
-  // Get current user's order history
-  Stream<List<Map<String, dynamic>>> getUserOrders() {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value([]);
-
-    return _ordersRef
-        .where('userId', isEqualTo: user.uid)
-        .orderBy('createdAt', descending: true)
+    return _db
+        .collection('products')
+        .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return data;
+        return Product.fromMap(data);
       }).toList();
     });
   }
 
-  // --- ADDRESS MANAGEMENT ---
+  // --- ORDERS ---
+  Future<String> createOrder({
+    required String userId,
+    required List<Map<String, dynamic>> items,
+    required double subtotal,
+    required double deliveryFee,
+    required double total,
+    required String addressId,
+    String paymentMethod = 'cod',
+  }) async {
+    try {
+      final orderId = _db.collection('orders').doc().id;
+      final now = Timestamp.now();
 
-  // Get user addresses sorted by Default first
-  Stream<List<UserAddress>> getUserAddresses() {
-    final user = _auth.currentUser;
+      final orderData = {
+        'orderId': orderId,
+        'userId': userId,
+        'items': items,
+        'subtotal': subtotal,
+        'deliveryFee': deliveryFee,
+        'total': total,
+        'addressId': addressId,
+        'paymentMethod': paymentMethod,
+        'status': 'pending',
+        'statusHistory': [
+          {
+            'status': 'pending',
+            'timestamp': now,
+            'note': 'Order placed',
+          }
+        ],
+        'createdAt': now,
+        'updatedAt': now,
+      };
 
-    // Security Check: If no user, return empty immediately
-    if (user == null) return Stream.value([]);
+      await _db.collection('orders').doc(orderId).set(orderData);
+      return orderId;
+    } catch (e) {
+      rethrow;
+    }
+  }
 
-    // ✅ Uses user.uid -> This ensures we ONLY get this user's data
+  // --- ADDRESSES ---
+  Stream<List<UserAddress>> getUserAddresses(String userId) {
     return _db
         .collection('users')
-        .doc(user.uid)
+        .doc(userId)
         .collection('addresses')
         .orderBy('isDefault', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => UserAddress.fromFirestore(doc)).toList();
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return UserAddress(
+          id: doc.id,
+          label: data['label'] ?? '',
+          fullName: data['fullName'] ?? '',
+          street: data['street'] ?? '',
+          city: data['city'] ?? '',
+          state: data['state'] ?? '',
+          zipCode: data['pincode'] ?? '',
+          phone: data['phone'] ?? '',
+          isDefault: data['isDefault'] ?? false,
+        );
+      }).toList();
     });
   }
 
-  // Add a new address
-  Future<void> addAddress(UserAddress address) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+  Future<void> saveAddress(String userId, UserAddress address) async {
+    try {
+      if (address.isDefault) {
+        // Remove default status from other addresses
+        final addressesSnapshot = await _db
+            .collection('users')
+            .doc(userId)
+            .collection('addresses')
+            .get();
 
-    final batch = _db.batch();
-    final newDoc = _db.collection('users').doc(user.uid).collection('addresses').doc();
-
-    // If setting as default, remove default status from others
-    if (address.isDefault) {
-      final allDocs = await _db.collection('users').doc(user.uid).collection('addresses').get();
-      for (var doc in allDocs.docs) {
-        batch.update(doc.reference, {'isDefault': false});
-      }
-    }
-
-    batch.set(newDoc, address.toMap());
-    await batch.commit();
-  }
-
-  // Update an existing address
-  Future<void> updateAddress(UserAddress address) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    final batch = _db.batch();
-    final docRef = _db.collection('users').doc(user.uid).collection('addresses').doc(address.id);
-
-    if (address.isDefault) {
-      final allDocs = await _db.collection('users').doc(user.uid).collection('addresses').get();
-      for (var doc in allDocs.docs) {
-        if (doc.id != address.id) {
+        final batch = _db.batch();
+        for (var doc in addressesSnapshot.docs) {
           batch.update(doc.reference, {'isDefault': false});
         }
+        await batch.commit();
       }
-    }
 
-    batch.update(docRef, address.toMap());
-    await batch.commit();
+      if (address.id.isEmpty) {
+        // Add new address
+        await _db
+            .collection('users')
+            .doc(userId)
+            .collection('addresses')
+            .add(address.toMap());
+      } else {
+        // Update existing address
+        await _db
+            .collection('users')
+            .doc(userId)
+            .collection('addresses')
+            .doc(address.id)
+            .update(address.toMap());
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  // Delete an address
-  Future<void> deleteAddress(String addressId) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    await _db.collection('users').doc(user.uid).collection('addresses').doc(addressId).delete();
+  Future<void> deleteAddress(String userId, String addressId) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('addresses')
+          .doc(addressId)
+          .delete();
+    } catch (e) {
+      rethrow;
+    }
   }
 }

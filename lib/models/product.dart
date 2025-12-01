@@ -1,76 +1,165 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// models/product_model.dart
 class Product {
   final String id;
   final String name;
   final String description;
+  final String brand;
   final double price;
-  final double? originalPrice;
+  final double mrp;
+  final double discount;
   final String unit;
-  final String imageUrl;
+  final String unitText;
+  final List<String> images;
+  final String thumbnail;
+  final ProductStock stock;
   final String category;
+  final String categoryId;
   final bool isFeatured;
-  final String deliveryTime;
-  final int discount;
+  final bool isBestSeller;
+  final ProductRatings ratings;
+  final int soldCount;
+  final List<Map<String, dynamic>> variants;
+  final ProductAttributes attributes;
+  final List<String> searchKeywords;
+  final List<String> tags;
 
   Product({
     required this.id,
     required this.name,
     required this.description,
+    required this.brand,
     required this.price,
-    this.originalPrice,
+    required this.mrp,
+    required this.discount,
     required this.unit,
-    required this.imageUrl,
+    required this.unitText,
+    required this.images,
+    required this.thumbnail,
+    required this.stock,
     required this.category,
-    this.isFeatured = false,
-    this.deliveryTime = "15 mins",
-    this.discount = 0,
+    required this.categoryId,
+    required this.isFeatured,
+    required this.isBestSeller,
+    required this.ratings,
+    required this.soldCount,
+    required this.variants,
+    required this.attributes,
+    required this.searchKeywords,
+    required this.tags,
   });
 
-  factory Product.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-
-    // HELPER: Safely parse numbers even if they are Strings in database
-    double parseDouble(dynamic value) {
-      if (value is int) return value.toDouble();
-      if (value is double) return value;
-      if (value is String) return double.tryParse(value) ?? 0.0;
-      return 0.0;
-    }
-
-    int parseInt(dynamic value) {
-      if (value is int) return value;
-      if (value is double) return value.toInt();
-      if (value is String) return int.tryParse(value) ?? 0;
-      return 0;
-    }
-
+  factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
-      id: doc.id,
-      name: data['name'] as String? ?? 'Unknown Product',
-      description: data['description'] as String? ?? '',
-
-      // SAFE PARSING: Handles "100", 100, and 100.0
-      price: parseDouble(data['price']),
-      originalPrice: data['originalPrice'] != null ? parseDouble(data['originalPrice']) : null,
-
-      unit: data['unit'] as String? ?? '1 pc',
-      imageUrl: data['imageUrl'] as String? ?? '',
-      category: data['category'] as String? ?? 'General',
-      isFeatured: data['isFeatured'] as bool? ?? false,
-      deliveryTime: data['deliveryTime'] as String? ?? '20 mins',
-      discount: parseInt(data['discount']),
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      description: map['description'] ?? '',
+      brand: map['brand'] ?? '',
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      mrp: (map['mrp'] as num?)?.toDouble() ?? 0.0,
+      discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
+      unit: map['unit'] ?? '',
+      unitText: map['unitText'] ?? '',
+      images: List<String>.from(map['images'] ?? []),
+      thumbnail: map['thumbnail'] ?? '',
+      stock: ProductStock.fromMap(map['stock'] ?? {}),
+      category: map['category']?['name']?.toString() ?? '',
+      categoryId: map['category']?['id']?.toString() ?? '',
+      isFeatured: map['isFeatured'] ?? false,
+      isBestSeller: map['isBestSeller'] ?? false,
+      ratings: ProductRatings.fromMap(map['ratings'] ?? {}),
+      soldCount: map['soldCount'] ?? 0,
+      variants: List<Map<String, dynamic>>.from(map['variants'] ?? []),
+      attributes: ProductAttributes.fromMap(map['attributes'] ?? {}),
+      searchKeywords: List<String>.from(map['searchKeywords'] ?? []),
+      tags: List<String>.from(map['tags'] ?? []),
     );
   }
 }
-class CartItem {
-  final Product product;
-  int quantity;
 
-  CartItem({required this.product, this.quantity = 1});
+class ProductStock {
+  final int availableQty;
+  final bool isAvailable;
+  final bool lowStock;
+  final DateTime lastUpdated;
 
-  double get total => product.price * quantity;
+  ProductStock({
+    required this.availableQty,
+    required this.isAvailable,
+    required this.lowStock,
+    required this.lastUpdated,
+  });
+
+  factory ProductStock.fromMap(Map<String, dynamic> map) {
+    return ProductStock(
+      availableQty: map['availableQty'] ?? 0,
+      isAvailable: map['isAvailable'] ?? false,
+      lowStock: map['lowStock'] ?? false,
+      lastUpdated: (map['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
 }
+
+class ProductRatings {
+  final double average;
+  final int count;
+
+  ProductRatings({
+    required this.average,
+    required this.count,
+  });
+
+  factory ProductRatings.fromMap(Map<String, dynamic> map) {
+    return ProductRatings(
+      average: (map['average'] as num?)?.toDouble() ?? 0.0,
+      count: map['count'] ?? 0,
+    );
+  }
+}
+
+class ProductAttributes {
+  final int weight;
+  final String weightUnit;
+  final bool vegetarian;
+  final bool organic;
+  final List<String> allergens;
+  final bool perishable;
+  final int minOrder;
+  final int maxOrder;
+
+  ProductAttributes({
+    required this.weight,
+    required this.weightUnit,
+    required this.vegetarian,
+    required this.organic,
+    required this.allergens,
+    required this.perishable,
+    required this.minOrder,
+    required this.maxOrder,
+  });
+
+  factory ProductAttributes.fromMap(Map<String, dynamic> map) {
+    return ProductAttributes(
+      weight: map['weight'] ?? 0,
+      weightUnit: map['weightUnit'] ?? 'g',
+      vegetarian: map['vegetarian'] ?? true,
+      organic: map['organic'] ?? false,
+      allergens: List<String>.from(map['allergens'] ?? []),
+      perishable: map['perishable'] ?? false,
+      minOrder: map['minOrder'] ?? 1,
+      maxOrder: map['maxOrder'] ?? 10,
+    );
+  }
+}
+// class CartItem {
+//   final Product product;
+//   int quantity;
+//
+//   CartItem({required this.product, this.quantity = 1});
+//
+//   double get total => product.price * quantity;
+// }
 
 class UserAddress {
   final String id;

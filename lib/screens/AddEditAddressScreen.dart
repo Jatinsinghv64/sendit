@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../DatabaseService.dart';
+import 'package:provider/provider.dart';
+
 import '../models/product.dart';
-import '../themes.dart';
+import '../providers/AddressProvider.dart';
+
 
 class AddEditAddressScreen extends StatefulWidget {
-  final UserAddress? address; // If null, it's Add mode
-
+  final UserAddress? address;
   const AddEditAddressScreen({super.key, this.address});
 
   @override
@@ -21,7 +22,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
   late TextEditingController _streetController;
   late TextEditingController _cityController;
   late TextEditingController _stateController;
-  late TextEditingController _zipController;
+  late TextEditingController _pincodeController;
 
   String _selectedLabel = 'Home'; // Home, Work, Other
   bool _isDefault = false;
@@ -36,13 +37,26 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
     _streetController = TextEditingController(text: addr?.street ?? '');
     _cityController = TextEditingController(text: addr?.city ?? '');
     _stateController = TextEditingController(text: addr?.state ?? '');
-    _zipController = TextEditingController(text: addr?.zipCode ?? '');
+    _pincodeController = TextEditingController(text: addr?.zipCode ?? '');
     _selectedLabel = addr?.label ?? 'Home';
     _isDefault = addr?.isDefault ?? false;
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _pincodeController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final addressProvider = Provider.of<AddressProvider>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -70,7 +84,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
                 children: [
                   Expanded(child: _buildTextField("City", _cityController, Icons.location_city)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildTextField("Pincode", _zipController, Icons.pin_drop_outlined, isNumber: true)),
+                  Expanded(child: _buildTextField("Pincode", _pincodeController, Icons.pin_drop_outlined, isNumber: true)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -87,9 +101,9 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
                       margin: const EdgeInsets.only(right: 12),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryColor : Colors.white,
+                        color: isSelected ? Theme.of(context).primaryColor : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300),
+                        border: Border.all(color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade300),
                       ),
                       child: Text(
                         label,
@@ -109,7 +123,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text("Make this my default address", style: TextStyle(fontWeight: FontWeight.w600)),
                 value: _isDefault,
-                activeColor: AppTheme.primaryColor,
+                activeColor: Theme.of(context).primaryColor,
                 onChanged: (val) => setState(() => _isDefault = val),
               ),
 
@@ -118,10 +132,13 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveAddress,
+                  onPressed: _isLoading ? null : () => _saveAddress(addressProvider),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                  ),
                   child: _isLoading
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white))
-                      : const Text("SAVE ADDRESS"),
+                      : const Text("SAVE ADDRESS", style: TextStyle(color: Colors.white)),
                 ),
               ),
             ],
@@ -144,18 +161,26 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
   Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool isNumber = false, int maxLines = 1}) {
     return TextFormField(
       controller: controller,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      keyboardType: isNumber ? TextInputType.phone : TextInputType.text,
       maxLines: maxLines,
-      validator: (val) => val == null || val.isEmpty ? "Required" : null,
+      validator: (val) {
+        if (val == null || val.isEmpty) return "Required";
+        if (label == "Phone Number" && val.length != 10) return "Enter valid 10-digit number";
+        if (label == "Pincode" && val.length != 6) return "Enter valid 6-digit pincode";
+        return null;
+      },
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
         alignLabelWithHint: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }
 
-  Future<void> _saveAddress() async {
+  Future<void> _saveAddress(AddressProvider addressProvider) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
@@ -167,20 +192,27 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
         street: _streetController.text.trim(),
         city: _cityController.text.trim(),
         state: _stateController.text.trim(),
-        zipCode: _zipController.text.trim(),
+        zipCode: _pincodeController.text.trim(),
         phone: _phoneController.text.trim(),
         isDefault: _isDefault,
       );
 
       if (widget.address == null) {
-        await DatabaseService().addAddress(newAddress);
+        await addressProvider.addAddress(newAddress);
       } else {
-        await DatabaseService().updateAddress(newAddress);
+        await addressProvider.updateAddress(newAddress);
       }
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

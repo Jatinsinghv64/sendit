@@ -1,12 +1,18 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Auth
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+
 import '../DatabaseService.dart';
 import '../models/product.dart';
 
 class AddressProvider with ChangeNotifier {
   UserAddress? _selectedAddress;
   List<UserAddress> _addresses = [];
+  final DatabaseService _dbService = DatabaseService();
 
   // Subscriptions
   StreamSubscription? _addressSubscription;
@@ -26,7 +32,7 @@ class AddressProvider with ChangeNotifier {
 
       if (user != null) {
         // ✅ NEW USER LOGGED IN: Fetch THEIR addresses
-        _addressSubscription = DatabaseService().getUserAddresses().listen((List<UserAddress> addrList) {
+        _addressSubscription = _dbService.getUserAddresses(user.uid).listen((List<UserAddress> addrList) {
           _addresses = addrList;
           _updateSelectedAddress(addrList);
           notifyListeners();
@@ -46,8 +52,8 @@ class AddressProvider with ChangeNotifier {
       if (addrList.isNotEmpty) {
         // Prefer default, otherwise pick first
         _selectedAddress = addrList.firstWhere(
-                (a) => a.isDefault,
-            orElse: () => addrList.first
+              (a) => a.isDefault,
+          orElse: () => addrList.first,
         );
       } else {
         _selectedAddress = null;
@@ -58,6 +64,27 @@ class AddressProvider with ChangeNotifier {
   void selectAddress(UserAddress address) {
     _selectedAddress = address;
     notifyListeners();
+  }
+
+  Future<void> addAddress(UserAddress address) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await _dbService.saveAddress(user.uid, address);
+    }
+  }
+
+  Future<void> updateAddress(UserAddress address) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await _dbService.saveAddress(user.uid, address);
+    }
+  }
+
+  Future<void> deleteAddress(String addressId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await _dbService.deleteAddress(user.uid, addressId);
+    }
   }
 
   @override

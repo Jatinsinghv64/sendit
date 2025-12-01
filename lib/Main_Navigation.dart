@@ -19,7 +19,7 @@ class _MainWrapperState extends State<MainWrapper> {
   final List<Widget> _pages = [
     const HomeScreen(),
     const FavoritesScreen(),
-    const ReorderScreen(),
+    // const ReorderScreen(),
     const SettingsScreen(),
   ];
 
