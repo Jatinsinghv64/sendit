@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// models/product_model.dart
 class Product {
   final String id;
   final String name;
@@ -16,6 +15,7 @@ class Product {
   final ProductStock stock;
   final String category;
   final String categoryId;
+  final String subCategory; // NEW FIELD
   final bool isFeatured;
   final bool isBestSeller;
   final ProductRatings ratings;
@@ -40,6 +40,7 @@ class Product {
     required this.stock,
     required this.category,
     required this.categoryId,
+    this.subCategory = '', // Default empty
     required this.isFeatured,
     required this.isBestSeller,
     required this.ratings,
@@ -66,6 +67,7 @@ class Product {
       stock: ProductStock.fromMap(map['stock'] ?? {}),
       category: map['category']?['name']?.toString() ?? '',
       categoryId: map['category']?['id']?.toString() ?? '',
+      subCategory: map['subCategory'] ?? '', // Map from DB
       isFeatured: map['isFeatured'] ?? false,
       isBestSeller: map['isBestSeller'] ?? false,
       ratings: ProductRatings.fromMap(map['ratings'] ?? {}),
@@ -152,18 +154,10 @@ class ProductAttributes {
     );
   }
 }
-// class CartItem {
-//   final Product product;
-//   int quantity;
-//
-//   CartItem({required this.product, this.quantity = 1});
-//
-//   double get total => product.price * quantity;
-// }
 
 class UserAddress {
   final String id;
-  final String label; // e.g., "Home", "Work"
+  final String label;
   final String fullName;
   final String street;
   final String city;

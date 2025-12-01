@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../DatabaseService.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product.dart';
 import '../themes.dart';
 import '../widgets/ProductCard.dart';
@@ -7,7 +7,7 @@ import '../widgets/FloatingCartButton.dart';
 
 class ProductListScreen extends StatefulWidget {
   final String title;
-  final String searchQuery;
+  final String searchQuery; // Category Name (e.g., "Winter") or "All"
 
   const ProductListScreen({
     super.key,
@@ -20,88 +20,199 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  final DatabaseService _dbService = DatabaseService();
+  // Selected index for the left sidebar
+  int _selectedSidebarIndex = 0;
+
+  // To store dynamic sub-categories fetched from data
+  List<String> _subCategories = ["All"];
 
   // Filter States
-  String _sortBy = 'Relevance'; // Options: Relevance, Price: Low to High, Price: High to Low
-  bool _showOnlyOffers = false;
+  String _sortBy = "Relevance";
+  String _selectedBrand = "All";
+  bool _showHandpicked = false;
+  bool _showBestseller = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
-        centerTitle: true,
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.title,
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            // Dynamic item count would ideally come from the stream, hardcoded for UI demo
+            StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('products')
+                    .where('isActive', isEqualTo: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+
+                  // Filter locally to get accurate count for this screen
+                  final count = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    // Apply ALL filters here too to get accurate count
+                    if (widget.searchQuery != "All" &&
+                        data['category'] != widget.searchQuery &&
+                        data['subCategory'] != widget.searchQuery &&
+                        !(data['searchKeywords'] as List).contains(widget.searchQuery.toLowerCase())) {
+                      return false;
+                    }
+                    // Add other filters logic if needed for count accuracy
+                    return true;
+                  }).length;
+
+                  return Text(
+                    "$count items",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w400),
+                  );
+                }
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Optional: Add search logic here later
-            },
-          ),
+          IconButton(icon: const Icon(Icons.search, color: Colors.black), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.share_outlined, color: Colors.black), onPressed: () {}),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.grey.shade200, height: 1),
+        ),
       ),
       body: Stack(
         children: [
           Column(
             children: [
-              // 1. Professional Filter Bar
+              // 1. HORIZONTAL FILTER BAR
               _buildFilterBar(),
 
-              // 2. Product Grid
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+
+              // 2. MAIN CONTENT (Sidebar + Grid)
               Expanded(
-                child: StreamBuilder<List<Product>>(
-                  stream: _dbService.getProducts(),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('products')
+                      .where('isActive', isEqualTo: true)
+                      .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return _buildEmptyState();
                     }
 
-                    // --- FILTERING LOGIC ---
-
-                    // 1. Base Filter (Category/Search)
-                    var products = snapshot.data!.where((p) {
-                      if (widget.searchQuery == "Featured") return p.isFeatured;
-                      if (widget.searchQuery == "All") return true;
-                      return p.category.toLowerCase() == widget.searchQuery.toLowerCase();
+                    // 1. Process Data
+                    List<Product> allProducts = snapshot.data!.docs.map((doc) {
+                      return Product.fromMap(doc.data() as Map<String, dynamic>);
                     }).toList();
 
-                    // 2. Apply "On Sale" Filter
-                    if (_showOnlyOffers) {
-                      products = products.where((p) => p.discount > 0).toList();
+                    // 2. Filter by Main Category (e.g. "Winter")
+                    if (widget.searchQuery != "All") {
+                      allProducts = allProducts.where((p) {
+                        return p.category == widget.searchQuery ||
+                            p.subCategory == widget.searchQuery ||
+                            p.searchKeywords.contains(widget.searchQuery.toLowerCase());
+                      }).toList();
                     }
 
-                    // 3. Apply Sorting
-                    if (_sortBy == 'Price: Low to High') {
-                      products.sort((a, b) => a.price.compareTo(b.price));
-                    } else if (_sortBy == 'Price: High to Low') {
-                      products.sort((a, b) => b.price.compareTo(a.price));
+                    // 3. Extract Sub-Categories Dynamically
+                    final Set<String> subs = {};
+                    for (var p in allProducts) {
+                      if (p.subCategory.isNotEmpty) subs.add(p.subCategory);
+                    }
+                    final currentSubCategories = ["All", ...subs.toList()];
+
+                    // 4. Filter by Selected Sidebar Item
+                    if (_selectedSidebarIndex >= currentSubCategories.length) {
+                      _selectedSidebarIndex = 0;
                     }
 
-                    // Check if empty after filters
-                    if (products.isEmpty) return _buildEmptyState();
+                    final selectedSubCat = currentSubCategories[_selectedSidebarIndex];
 
-                    return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Bottom padding for cart button
-                      itemCount: products.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.68, // Optimized for professional card height
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 12,
-                      ),
-                      itemBuilder: (context, index) {
-                        return ProductCard(product: products[index]);
-                      },
+                    var filteredProducts = allProducts; // Working list
+
+                    if (selectedSubCat != "All") {
+                      filteredProducts = filteredProducts.where((p) => p.subCategory == selectedSubCat).toList();
+                    }
+
+                    // 5. Apply Top Filters
+                    if (_showHandpicked) {
+                      filteredProducts = filteredProducts.where((p) => p.isFeatured).toList();
+                    }
+                    if (_showBestseller) {
+                      filteredProducts = filteredProducts.where((p) => p.isBestSeller).toList();
+                    }
+                    if (_selectedBrand != "All") {
+                      filteredProducts = filteredProducts.where((p) => p.brand == _selectedBrand).toList();
+                    }
+                    // Implement Sort
+                    if (_sortBy == "Price: Low to High") {
+                      filteredProducts.sort((a, b) => a.price.compareTo(b.price));
+                    } else if (_sortBy == "Price: High to Low") {
+                      filteredProducts.sort((a, b) => b.price.compareTo(a.price));
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // SIDEBAR
+                        _buildSidebar(currentSubCategories),
+
+                        // GRID
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header Text
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+                                child: Text(
+                                  "${filteredProducts.length} items in $selectedSubCat",
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.black87
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: GridView.builder(
+                                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    childAspectRatio: 0.58, // Adjusted ratio
+                                    mainAxisSpacing: 16,
+                                    crossAxisSpacing: 12,
+                                  ),
+                                  itemCount: filteredProducts.length,
+                                  itemBuilder: (context, index) {
+                                    // Pass showAddButton: false if needed, but here ProductCard handles it internally
+                                    // based on logic. But wait, user said "remove add button".
+                                    // Assuming user meant remove the *separate* add button at bottom of card
+                                    // and rely on the top right one. ProductCard implementation below handles this.
+                                    return ProductCard(product: filteredProducts[index]);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -109,7 +220,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ],
           ),
 
-          // 3. Floating Cart Button
+          // Floating Cart
           const FloatingCartButton(),
         ],
       ),
@@ -120,122 +231,160 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Widget _buildFilterBar() {
     return Container(
-      height: 54,
+      height: 56,
       width: double.infinity,
       color: Colors.white,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         children: [
-          // Sort Filter Chip
-          _buildFilterChip(
-            label: _sortBy == 'Relevance' ? 'Sort By' : _sortBy.replaceAll('Price: ', ''),
-            icon: Icons.sort,
-            isActive: _sortBy != 'Relevance',
-            hasDropdown: true,
-            onTap: _showSortBottomSheet,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.tune, size: 16, color: Colors.black),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
-          // On Sale Filter Chip
-          _buildFilterChip(
-            label: 'On Sale',
-            icon: Icons.local_offer_outlined,
-            isActive: _showOnlyOffers,
-            hasDropdown: false,
-            onTap: () => setState(() => _showOnlyOffers = !_showOnlyOffers),
-          ),
+          _buildDropdownFilter("Sort By", _sortBy, ["Relevance", "Price: Low to High", "Price: High to Low"], (val) => setState(() => _sortBy = val)),
+          const SizedBox(width: 8),
+          // _buildDropdownFilter("Type", _selectedType, ["All", "Veg", "Non-Veg"], (val) => setState(() => _selectedType = val)),
+          // const SizedBox(width: 8),
+          _buildDropdownFilter("Brand", _selectedBrand, ["All", "Amul", "Nestle", "Britannia"], (val) => setState(() => _selectedBrand = val)),
+          const SizedBox(width: 8),
+          _buildToggleFilter("Handpicked", Icons.thumb_up_alt, _showHandpicked, () => setState(() => _showHandpicked = !_showHandpicked)),
+          const SizedBox(width: 8),
+          _buildToggleFilter("Bestseller", Icons.emoji_events, _showBestseller, () => setState(() => _showBestseller = !_showBestseller)),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required IconData icon,
-    required bool isActive,
-    required bool hasDropdown,
-    required VoidCallback onTap
-  }) {
-    return GestureDetector(
-      onTap: onTap,
+  Widget _buildDropdownFilter(String label, String currentValue, List<String> options, Function(String) onSelect) {
+    return PopupMenuButton<String>(
+      onSelected: onSelect,
+      itemBuilder: (BuildContext context) {
+        return options.map((String choice) {
+          return PopupMenuItem<String>(
+            value: choice,
+            child: Text(choice),
+          );
+        }).toList();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.qcGreenLight : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? AppTheme.primaryColor : Colors.grey.shade300,
-            width: 1,
-          ),
+          border: Border.all(color: currentValue != (label == "Sort By" ? "Relevance" : "All") ? const Color(0xFFD32F2F) : Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+          color: currentValue != (label == "Sort By" ? "Relevance" : "All") ? const Color(0xFFFFF0F0) : Colors.white,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isActive ? AppTheme.primaryColor : AppTheme.textPrimary),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isActive ? AppTheme.primaryColor : AppTheme.textPrimary,
-              ),
-            ),
-            if (hasDropdown) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down, size: 16, color: isActive ? AppTheme.primaryColor : Colors.grey)
-            ]
+            Text(currentValue == "Relevance" || currentValue == "All" ? label : currentValue,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: currentValue != (label == "Sort By" ? "Relevance" : "All") ? const Color(0xFFD32F2F) : Colors.black)),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down, size: 16, color: currentValue != (label == "Sort By" ? "Relevance" : "All") ? const Color(0xFFD32F2F) : Colors.grey),
           ],
         ),
       ),
     );
   }
 
-  // Bottom Sheet for Sorting
-  void _showSortBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Text("Sort By", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              _buildSortOption("Relevance"),
-              _buildSortOption("Price: Low to High"),
-              _buildSortOption("Price: High to Low"),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
+  Widget _buildToggleFilter(String label, IconData icon, bool isActive, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: isActive ? const Color(0xFFD32F2F) : Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+          color: isActive ? const Color(0xFFFFF0F0) : Colors.white,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: isActive ? const Color(0xFFD32F2F) : Colors.grey),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isActive ? const Color(0xFFD32F2F) : Colors.black)),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildSortOption(String option) {
-    final isSelected = _sortBy == option;
-    return ListTile(
-      title: Text(
-          option,
-          style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? AppTheme.primaryColor : Colors.black
-          )
+  // Pass dynamic list to sidebar
+  Widget _buildSidebar(List<String> categories) {
+    return Container(
+      width: 90,
+      color: Colors.white,
+      child: ListView.builder(
+        padding: EdgeInsets.zero,
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final isSelected = _selectedSidebarIndex == index;
+          String name = categories[index];
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedSidebarIndex = index),
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white : const Color(0xFFF5F7FD),
+                border: isSelected
+                    ? const Border(left: BorderSide(color: Color(0xFFD32F2F), width: 4))
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? const Color(0xFFFFF0F0) : Colors.white,
+                    ),
+                    child: Icon(
+                      _getIconForSubCat(name),
+                      color: isSelected ? const Color(0xFFD32F2F) : Colors.grey,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.black : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
-      trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryColor) : null,
-      onTap: () {
-        setState(() => _sortBy = option);
-        Navigator.pop(context);
-      },
     );
+  }
+
+  IconData _getIconForSubCat(String name) {
+    name = name.toLowerCase();
+    if (name.contains('snack')) return Icons.cookie;
+    if (name.contains('bowl')) return Icons.rice_bowl;
+    if (name.contains('plate')) return Icons.radio_button_unchecked;
+    if (name.contains('jar')) return Icons.kitchen;
+    if (name.contains('glass')) return Icons.local_drink;
+    if (name.contains('tray')) return Icons.calendar_view_day;
+    if (name == 'all') return Icons.grid_view;
+    return Icons.category;
   }
 
   Widget _buildEmptyState() {
@@ -243,14 +392,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 60, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text("No items found in this section", style: TextStyle(color: Colors.grey)),
-          if (_showOnlyOffers)
-            TextButton(
-              onPressed: () => setState(() => _showOnlyOffers = false),
-              child: const Text("Clear Filters", style: TextStyle(color: AppTheme.primaryColor)),
-            )
+          Icon(Icons.search_off, size: 40, color: Colors.grey[300]),
+          const SizedBox(height: 10),
+          Text("No products found", style: TextStyle(color: Colors.grey[500])),
         ],
       ),
     );

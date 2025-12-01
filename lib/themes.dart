@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Professional "Quick Commerce" Palette
-  static const Color qcGreen = Color(0xFF0C831F);
+  // Swiggy Instamart-inspired Palette
+  static const Color qcGreen = Color(0xFF0C831F); // The core brand color
   static const Color qcGreenDark = Color(0xFF096316);
-  static const Color qcGreenLight = Color(0xFFF0FFF4);
+  static const Color qcGreenLight = Color(0xFFF0FFF4); // Very light green for backgrounds
   static const Color qcAccentBlue = Color(0xFF256FEF);
   static const Color qcDiscountRed = Color(0xFFD32F2F);
 
-  static const Color background = Color(0xFFF4F6FB);
+  // Backgrounds
+  static const Color background = Color(0xFFF5F7FD); // Slightly blue-ish grey
   static const Color surface = Colors.white;
-  static const Color border = Color(0xFFE5E7EB);
+  static const Color border = Color(0xFFE0E0E0);
 
-  // Typography Colors
-  static const Color textPrimary = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF9CA3AF);
+  // Typography
+  static const Color textPrimary = Color(0xFF1F1F1F); // Softer black
+  static const Color textSecondary = Color(0xFF6B6B6B);
+  static const Color textTertiary = Color(0xFF9E9E9E);
 
-  // Fixed: Define primaryColor alias so HomeScreen can access 'AppTheme.primaryColor'
   static const Color primaryColor = qcGreen;
 
   static ThemeData get lightTheme {
@@ -38,22 +38,30 @@ class AppTheme {
       ),
 
       textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 24),
+        displayLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 22),
         titleLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
-        titleMedium: const TextStyle(color: textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
-        bodyLarge: const TextStyle(color: textPrimary, fontSize: 14),
-        bodyMedium: const TextStyle(color: textSecondary, fontSize: 12, height: 1.4),
-        labelSmall: const TextStyle(color: textTertiary, fontSize: 10, fontWeight: FontWeight.w600),
+        titleMedium: const TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+        bodyLarge: const TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+        bodyMedium: const TextStyle(color: textSecondary, fontSize: 12, height: 1.4, fontWeight: FontWeight.w500),
+        labelSmall: const TextStyle(color: textTertiary, fontSize: 10, fontWeight: FontWeight.w700),
       ),
 
-      // FIXED: Changed 'CardTheme' to 'CardThemeData'
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: border, width: 1),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: border, width: 0.5),
         ),
+      ),
+
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: textPrimary),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -62,7 +70,16 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
+      ),
+
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: qcGreen,
+          side: const BorderSide(color: qcGreen),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
         ),
       ),

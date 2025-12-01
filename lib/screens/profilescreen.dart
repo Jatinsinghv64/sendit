@@ -4,8 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth_provider.dart';
 import '../themes.dart';
-import '../widgets/AddressListScreen.dart';
-import 'ReorderScreen.dart';
+
 import 'FavoritesScreen.dart';
 
 class ProfileScreen extends StatelessWidget {
