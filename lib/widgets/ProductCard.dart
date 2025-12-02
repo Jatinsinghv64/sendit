@@ -23,6 +23,8 @@ class ProductCard extends StatelessWidget {
     // CACHE BUSTER: Append lastUpdated timestamp to URL to force refresh when data changes
     String imageUrl = product.thumbnail;
     if (imageUrl.isNotEmpty) {
+      // Logic: If lastUpdated is epoch(0) (default from model), it won't affect URL much.
+      // If it is a real timestamp from Firestore, it acts as a version key.
       final separator = imageUrl.contains('?') ? '&' : '?';
       imageUrl += "${separator}v=${product.stock.lastUpdated.millisecondsSinceEpoch}";
     }
@@ -58,6 +60,8 @@ class ProductCard extends StatelessWidget {
                     child: imageUrl.isEmpty
                         ? const Icon(Icons.image_not_supported, color: Colors.grey)
                         : CachedNetworkImage(
+                      // FIX: The Key forces the widget to refresh if the URL (including timestamp) changes
+                      key: ValueKey(imageUrl),
                       imageUrl: imageUrl,
                       fit: BoxFit.contain,
                       // Show a light spinner while loading

@@ -52,6 +52,23 @@ class Product {
   });
 
   factory Product.fromMap(Map<String, dynamic> map) {
+    // 1. Parse images list first so we can use it as a fallback
+    List<String> parsedImages = List<String>.from(map['images'] ?? []);
+
+    // 2. Robust Thumbnail Logic:
+    // Check fields in order of priority. Ignore null AND empty strings.
+    String? thumb = map['thumbnail'];
+    if (thumb == null || thumb.isEmpty) {
+      thumb = map['imageUrl'];
+    }
+    if (thumb == null || thumb.isEmpty) {
+      thumb = map['image'];
+    }
+    // Fallback: If still empty, use the first image from the list
+    if ((thumb == null || thumb.isEmpty) && parsedImages.isNotEmpty) {
+      thumb = parsedImages.first;
+    }
+
     return Product(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
@@ -62,8 +79,9 @@ class Product {
       discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
       unit: map['unit'] ?? '',
       unitText: map['unitText'] ?? '',
-      images: List<String>.from(map['images'] ?? []),
-      thumbnail: map['thumbnail'] ?? '',
+      images: parsedImages,
+      // FIX: Use the robust thumb calculated above
+      thumbnail: thumb ?? '',
       stock: ProductStock.fromMap(map['stock'] ?? {}),
       category: map['category']?['name']?.toString() ?? '',
       categoryId: map['category']?['id']?.toString() ?? '',
@@ -98,7 +116,8 @@ class ProductStock {
       availableQty: map['availableQty'] ?? 0,
       isAvailable: map['isAvailable'] ?? false,
       lowStock: map['lowStock'] ?? false,
-      lastUpdated: (map['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      // FIX: Use a fixed epoch time instead of DateTime.now() to prevent URL flickering
+      lastUpdated: (map['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
