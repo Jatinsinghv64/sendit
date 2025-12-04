@@ -156,59 +156,66 @@ class ProductCard extends StatelessWidget {
             // CONTENT SECTION
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8), // Reduced bottom padding from 10 to 8
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name
-                    Text(
-                      product.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, height: 1.2, color: Color(0xFF1C1C1C)),
-                    ),
-                    const SizedBox(height: 4),
-                    // Unit
-                    Text(
-                      product.unitText,
-                      style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500),
-                    ),
-
-                    const SizedBox(height: 6), // Reduced gap
-
-                    // Rating Badge (Filling the gap)
-                    if (product.ratings.count > 0) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.green.shade100),
-                        ),
-                        child: Row(
+                    // Top Section: Name, Unit, Ratings (Wrapped in Expanded + SingleChildScrollView to prevent overflow)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const NeverScrollableScrollPhysics(), // Disable user scrolling, just for layout safety
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star, size: 10, color: Colors.green),
-                            const SizedBox(width: 2),
+                            // Name
                             Text(
-                              product.ratings.average.toStringAsFixed(1),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                              product.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, height: 1.2, color: Color(0xFF1C1C1C)),
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(height: 4),
+                            // Unit
                             Text(
-                              "(${product.ratings.count})",
-                              style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                              product.unitText,
+                              style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500),
                             ),
+                            const SizedBox(height: 6),
+                            // Rating Badge
+                            if (product.ratings.count > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.green.shade100),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, size: 10, color: Colors.green),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      product.ratings.average.toStringAsFixed(1),
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      "(${product.ratings.count})",
+                                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 6), // Reduced gap from 8
-                    ] else ...[
-                      // Reduced gap significantly from 24 to 6
-                      const SizedBox(height: 6),
-                    ],
+                    ),
 
-                    // PRICE
+                    const SizedBox(height: 4), // Small gap before price
+
+                    // PRICE (Fixed at bottom)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

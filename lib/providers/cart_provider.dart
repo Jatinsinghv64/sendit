@@ -68,10 +68,13 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> placeOrder() async {
+  // UPDATED: Accepts addressId to link the order to the correct location
+  Future<void> placeOrder(String addressId) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("User not logged in");
+
+      if (addressId.isEmpty) throw Exception("Delivery address is required");
 
       // Prepare order items
       final orderItems = _items.values.map((item) => {
@@ -83,9 +86,9 @@ class CartProvider with ChangeNotifier {
         'image': item.product.thumbnail,
       }).toList();
 
-      // Calculate totals - convert deliveryFee to double
+      // Calculate totals
       final subtotal = totalAmount;
-      final deliveryFee = subtotal > 299 ? 0.0 : 29.0; // Changed to double
+      final deliveryFee = subtotal > 299 ? 0.0 : 29.0;
       final total = subtotal + deliveryFee;
 
       // Create order
@@ -93,9 +96,9 @@ class CartProvider with ChangeNotifier {
         userId: user.uid,
         items: orderItems,
         subtotal: subtotal,
-        deliveryFee: deliveryFee, // Now double
+        deliveryFee: deliveryFee,
         total: total,
-        addressId: '', // You need to get this from AddressProvider
+        addressId: addressId, // Passing the actual selected address ID
       );
 
       // Clear cart after successful order

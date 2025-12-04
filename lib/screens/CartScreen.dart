@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/AddressProvider.dart';
+import '../widgets/AddressListScreen.dart';
 import '../themes.dart';
-
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -25,11 +27,14 @@ class _CartScreenState extends State<CartScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text("My Cart", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Consumer<CartProvider>(
-              builder: (context, cart, _) => Text(
-                "${cart.itemCount} items • to Home",
-                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w400),
-              ),
+            Consumer2<CartProvider, AddressProvider>(
+              builder: (context, cart, addressProvider, _) {
+                final addressLabel = addressProvider.selectedAddress?.label ?? "Home";
+                return Text(
+                  "${cart.itemCount} items • to $addressLabel",
+                  style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w400),
+                );
+              },
             ),
           ],
         ),
@@ -54,7 +59,7 @@ class _CartScreenState extends State<CartScreen> {
             padding: const EdgeInsets.only(bottom: 120),
             child: Column(
               children: [
-                // 1. Delivery Promise (Instamart Style Pill)
+                // 1. Delivery Promise
                 Container(
                   margin: const EdgeInsets.all(12),
                   padding: const EdgeInsets.all(12),
@@ -104,21 +109,28 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         itemBuilder: (ctx, i) => _buildCartRow(cart.items.values.toList()[i], cart),
                       ),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF8FAF8), // Very light green
-                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.add_circle_outline, size: 18, color: Colors.black54),
-                            const SizedBox(width: 8),
-                            const Text("Add more items", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                            const Spacer(),
-                            Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400)
-                          ],
+                      // Add More Items Button
+                      InkWell(
+                        onTap: () {
+                          // Navigate back to Home/Main wrapper to shop more
+                          Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FAF8), // Very light green
+                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.add_circle_outline, size: 18, color: Colors.black54),
+                              const SizedBox(width: 8),
+                              const Text("Add more items", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Spacer(),
+                              Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400)
+                            ],
+                          ),
                         ),
                       )
                     ],
@@ -269,10 +281,11 @@ class _CartScreenState extends State<CartScreen> {
           );
         },
       ),
-      bottomSheet: Consumer<CartProvider>(
-        builder: (context, cart, _) {
+      bottomSheet: Consumer2<CartProvider, AddressProvider>(
+        builder: (context, cart, addressProvider, _) {
           if (cart.items.isEmpty) return const SizedBox.shrink();
           final toPay = cart.totalAmount + 4.0 + (cart.totalAmount > 199 ? 0 : 25) + _tipAmount + (_donateToFeedingIndia ? 2 : 0);
+          final selectedAddress = addressProvider.selectedAddress;
 
           return Container(
             color: Colors.white,
@@ -282,22 +295,62 @@ class _CartScreenState extends State<CartScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Address Strip
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, size: 16, color: AppTheme.swiggyOrange),
-                      const SizedBox(width: 4),
-                      Text("Delivering to Home", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade800)),
-                      const Spacer(),
-                      Text("Change", style: TextStyle(color: AppTheme.swiggyOrange, fontWeight: FontWeight.bold, fontSize: 12)),
-                    ],
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AddressListScreen(isSelectionMode: true),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            selectedAddress == null ? Icons.location_off : Icons.location_on,
+                            size: 20,
+                            color: AppTheme.swiggyOrange,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                selectedAddress == null ? "No Address Selected" : "Delivering to ${selectedAddress.label}",
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey.shade800),
+                              ),
+                              Text(
+                                selectedAddress == null ? "Tap to select delivery location" : "${selectedAddress.street}, ${selectedAddress.city}",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          "CHANGE",
+                          style: TextStyle(color: AppTheme.swiggyOrange, fontWeight: FontWeight.w800, fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   // Pay Button
                   ElevatedButton(
-                    onPressed: _isLoading ? null : () => _placeOrder(cart),
+                    onPressed: _isLoading ? null : () => _placeOrder(cart, addressProvider),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.qcGreen, // Green for "Go"
+                      disabledBackgroundColor: Colors.grey.shade300,
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -308,15 +361,18 @@ class _CartScreenState extends State<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text("₹${toPay.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text("₹${toPay.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
                             const Text("TOTAL", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white70)),
                           ],
                         ),
-                        const Row(
+                        Row(
                           children: [
-                            Text("Proceed to Pay", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward_rounded, size: 18)
+                            Text(
+                              selectedAddress == null ? "Select Address" : "Proceed to Pay",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white)
                           ],
                         )
                       ],
@@ -336,7 +392,7 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.network("[https://cdn-icons-png.flaticon.com/512/11329/11329060.png](https://cdn-icons-png.flaticon.com/512/11329/11329060.png)", height: 150),
+          Icon(Icons.remove_shopping_cart, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 20),
           const Text("Your cart is empty", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -345,7 +401,7 @@ class _CartScreenState extends State<CartScreen> {
           ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.swiggyOrange),
-              child: const Text("See restaurants near you")
+              child: const Text("See restaurants near you", style: TextStyle(color: Colors.white))
           )
         ],
       ),
@@ -355,13 +411,29 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildCartRow(CartItem item, CartProvider cart) {
     return Row(
       children: [
-        // Veg/Non-Veg icon could go here
+        // 1. Veg/Non-Veg icon (Optional based on data, keeping generic)
         Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(border: Border.all(color: Colors.green), borderRadius: BorderRadius.circular(4)),
           child: const Icon(Icons.circle, size: 8, color: Colors.green),
         ),
         const SizedBox(width: 12),
+
+        // 2. Product Image
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: CachedNetworkImage(
+            imageUrl: item.product.thumbnail,
+            width: 50,
+            height: 50,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(color: Colors.grey[200]),
+            errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, color: Colors.grey),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // 3. Product Details
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,6 +445,8 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
         ),
+
+        // 4. Quantity Controls
         Container(
           height: 36,
           decoration: BoxDecoration(
@@ -428,21 +502,36 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Future<void> _placeOrder(CartProvider cart) async {
+  Future<void> _placeOrder(CartProvider cart, AddressProvider addressProvider) async {
+    if (addressProvider.selectedAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select a delivery address first"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      // Optional: Auto open address selection
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressListScreen(isSelectionMode: true)));
+      return;
+    }
+
     setState(() => _isLoading = true);
-    // Simulate network delay for effect
+    // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
     try {
-      await cart.placeOrder();
+      // Pass the selected address ID to placeOrder
+      await cart.placeOrder(addressProvider.selectedAddress!.id);
+
       if(mounted) {
         // Show success animation/dialog (Instamart style)
-        Navigator.pop(context);
+        Navigator.pop(context); // Close Cart
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Order Placed Successfully!"), backgroundColor: AppTheme.qcGreen),
         );
       }
     } catch (e) {
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e")));
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed: $e"), backgroundColor: Colors.red));
     } finally {
       if(mounted) setState(() => _isLoading = false);
     }
