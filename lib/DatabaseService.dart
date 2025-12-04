@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import 'models/product.dart';
-
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -15,13 +12,24 @@ class DatabaseService {
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return Product.fromMap(data);
       }).toList();
     });
   }
 
-  // --- ORDERS ---
+  // --- CATEGORIES (Fix for AllCategoriesScreen) ---
+  Stream<List<Map<String, dynamic>>> getCategories() {
+    return _db
+        .collection('categories')
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
+  }
+
+  // --- ORDERS (Fix for ReorderScreen) ---
   Future<String> createOrder({
     required String userId,
     required List<Map<String, dynamic>> items,
@@ -44,7 +52,7 @@ class DatabaseService {
         'total': total,
         'addressId': addressId,
         'paymentMethod': paymentMethod,
-        'status': 'pending',
+        'status': 'pending', // pending, delivered, cancelled
         'statusHistory': [
           {
             'status': 'pending',
@@ -63,6 +71,18 @@ class DatabaseService {
     }
   }
 
+  // Fetch User's Past Orders
+  Stream<List<Map<String, dynamic>>> getUserOrders(String userId) {
+    return _db
+        .collection('orders')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
+  }
+
   // --- ADDRESSES ---
   Stream<List<UserAddress>> getUserAddresses(String userId) {
     return _db
@@ -73,18 +93,7 @@ class DatabaseService {
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return UserAddress(
-          id: doc.id,
-          label: data['label'] ?? '',
-          fullName: data['fullName'] ?? '',
-          street: data['street'] ?? '',
-          city: data['city'] ?? '',
-          state: data['state'] ?? '',
-          zipCode: data['pincode'] ?? '',
-          phone: data['phone'] ?? '',
-          isDefault: data['isDefault'] ?? false,
-        );
+        return UserAddress.fromFirestore(doc);
       }).toList();
     });
   }
@@ -107,14 +116,12 @@ class DatabaseService {
       }
 
       if (address.id.isEmpty) {
-        // Add new address
         await _db
             .collection('users')
             .doc(userId)
             .collection('addresses')
             .add(address.toMap());
       } else {
-        // Update existing address
         await _db
             .collection('users')
             .doc(userId)

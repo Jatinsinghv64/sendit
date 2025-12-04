@@ -5,7 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth_provider.dart';
 import '../themes.dart';
 
+// Import all functional screens
 import 'FavoritesScreen.dart';
+import 'ReorderScreen.dart';
+import '../widgets/AddressListScreen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -128,30 +131,32 @@ class ProfileScreen extends StatelessWidget {
                 // 2. Menu Section: Content
                 _buildSectionHeader("CONTENT"),
 
-                // _buildMenuTile(
-                //   context,
-                //   icon: Icons.receipt_long_rounded,
-                //   title: "My Orders",
-                //   subtitle: "Track & reorder past purchases",
-                //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReorderScreen())),
-                // ),
+                _buildMenuTile(
+                  context,
+                  icon: Icons.receipt_long_rounded,
+                  title: "My Orders",
+                  subtitle: "Track & reorder past purchases",
+                  // ✅ Linked to ReorderScreen
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReorderScreen())),
+                ),
 
                 _buildMenuTile(
                   context,
                   icon: Icons.favorite_rounded,
                   title: "My Wishlist",
                   subtitle: "Your saved products",
+                  // ✅ Linked to FavoritesScreen
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
                 ),
 
-                // Address Management Link
-                // _buildMenuTile(
-                //   context,
-                //   icon: Icons.location_on_rounded,
-                //   title: "Delivery Addresses",
-                //   subtitle: "Manage your saved addresses",
-                //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressListScreen())),
-                // ),
+                _buildMenuTile(
+                  context,
+                  icon: Icons.location_on_rounded,
+                  title: "Delivery Addresses",
+                  subtitle: "Manage your saved addresses",
+                  // ✅ Linked to AddressListScreen
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressListScreen())),
+                ),
 
                 const SizedBox(height: 12),
 
@@ -189,7 +194,8 @@ class ProfileScreen extends StatelessWidget {
                       onPressed: () async {
                         await authProvider.logout();
                         if (context.mounted) {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
+                          // Pop everything and go back to login (or main wrapper which redirects to login)
+                          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                         }
                       },
                       style: OutlinedButton.styleFrom(
@@ -291,22 +297,23 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () async {
               try {
                 // Update Firestore
-                await FirebaseFirestore.instance.collection('users').doc(uid).update({
-                  'name': nameController.text.trim(),
-                  'phone': phoneController.text.trim(),
-                });
-                if (ctx.mounted) Navigator.pop(ctx);
-              } catch (e) {
-                // Handle error (e.g. create doc if missing)
                 await FirebaseFirestore.instance.collection('users').doc(uid).set({
                   'name': nameController.text.trim(),
                   'phone': phoneController.text.trim(),
-                  'email': FirebaseAuth.instance.currentUser?.email,
+                  // We merge to avoid overwriting email or created date if they exist
                 }, SetOptions(merge: true));
+
                 if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error updating profile: $e")),
+                  );
+                }
               }
             },
-            child: const Text("Save"),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            child: const Text("Save", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
