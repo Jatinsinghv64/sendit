@@ -160,7 +160,7 @@ class FavoritesScreen extends StatelessWidget {
               fav.clear();
               Navigator.pop(ctx);
             },
-            child: const Text("Clear", style: TextStyle(color: AppTheme.qcDiscountRed, fontWeight: FontWeight.bold)),
+            child: Text("Clear", style: TextStyle(color: AppTheme.swiggyOrange, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

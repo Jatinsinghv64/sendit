@@ -193,9 +193,9 @@ class ProfileScreen extends StatelessWidget {
                         }
                       },
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppTheme.qcDiscountRed),
+                        side: const BorderSide(color: AppTheme.swiggyOrange),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        foregroundColor: AppTheme.qcDiscountRed,
+                        foregroundColor: AppTheme.swiggyOrange,
                       ),
                       child: const Text("Log Out", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ),

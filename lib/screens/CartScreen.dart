@@ -13,13 +13,26 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   bool _isLoading = false;
+  double _tipAmount = 0.0;
+  bool _donateToFeedingIndia = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FD),
+      backgroundColor: const Color(0xFFF4F4F6), // Instamart grey bg
       appBar: AppBar(
-        title: const Text("My Cart", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("My Cart", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Consumer<CartProvider>(
+              builder: (context, cart, _) => Text(
+                "${cart.itemCount} items • to Home",
+                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w400),
+              ),
+            ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -29,90 +42,226 @@ class _CartScreenState extends State<CartScreen> {
         builder: (context, cart, child) {
           if (cart.items.isEmpty) return _buildEmptyState(context);
 
+          // Calculations
+          final double itemTotal = cart.totalAmount;
+          final double handlingFee = 4.0;
+          final double deliveryFee = itemTotal > 199 ? 0.0 : 25.0;
+          final double donation = _donateToFeedingIndia ? 2.0 : 0.0;
+          final double toPay = itemTotal + handlingFee + deliveryFee + _tipAmount + donation;
+          final double savings = (itemTotal * 0.1); // Mock savings
+
           return SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 100),
+            padding: const EdgeInsets.only(bottom: 120),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Delivery Time Banner
+                // 1. Delivery Promise (Instamart Style Pill)
                 Container(
-                  width: double.infinity,
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4)],
+                  ),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppTheme.qcGreenLight, borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.timer, color: AppTheme.qcGreen),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F7FA), // Light Cyan
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.flash_on_rounded, color: Color(0xFF00ACC1), size: 24),
                       ),
                       const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Delivery in 10 minutes", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                          Text("Shipment of 1 item", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Delivery in 8 minutes", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                            Text("Shipment of 1 item", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
                       )
                     ],
                   ),
                 ),
 
-                // 2. Cart Items List
+                // 2. Cart Items
                 Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Items Added", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      const SizedBox(height: 12),
                       ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
                         itemCount: cart.items.length,
                         separatorBuilder: (_, __) => const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Divider(height: 1),
                         ),
-                        itemBuilder: (ctx, i) {
-                          final item = cart.items.values.toList()[i];
-                          return _buildCartRow(item, cart);
-                        },
+                        itemBuilder: (ctx, i) => _buildCartRow(cart.items.values.toList()[i], cart),
                       ),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF8FAF8), // Very light green
+                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.add_circle_outline, size: 18, color: Colors.black54),
+                            const SizedBox(width: 8),
+                            const Text("Add more items", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            const Spacer(),
+                            Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400)
+                          ],
+                        ),
+                      )
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 12),
-
-                // 3. Bill Details Widget
+                // 3. Coupon Section
                 Container(
-                  color: Colors.white,
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_offer_outlined, color: AppTheme.instamartPurple),
+                      const SizedBox(width: 12),
+                      const Text("Apply Coupon", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Spacer(),
+                      Text("Select", style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400)
+                    ],
+                  ),
+                ),
+
+                // 4. Tip Delivery Partner
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Bill Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Text("Tip your delivery partner", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 4),
+                      const Text("Thank your delivery partner for helping you stay safe indoors. Support them with a tip.",
+                          style: TextStyle(fontSize: 11, color: Colors.grey)),
                       const SizedBox(height: 12),
-                      _buildBillRow("Item Total", cart.totalAmount),
-                      _buildBillRow("Handling Charge", 5.00),
-                      _buildBillRow("Delivery Fee", 30.00, isStrike: cart.totalAmount > 100),
-                      const Divider(height: 24),
-                      _buildBillRow("To Pay", cart.totalAmount + 5.00 + (cart.totalAmount > 100 ? 0 : 30), isTotal: true),
+                      Row(
+                        children: [10, 20, 30, 50].map((amt) =>
+                            GestureDetector(
+                              onTap: () => setState(() => _tipAmount = _tipAmount == amt.toDouble() ? 0.0 : amt.toDouble()),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _tipAmount == amt.toDouble() ? const Color(0xFFFFF3E0) : Colors.white,
+                                  border: Border.all(
+                                      color: _tipAmount == amt.toDouble() ? Colors.orange : Colors.grey.shade300
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    if(_tipAmount == amt.toDouble()) const Text("💰 ", style: TextStyle(fontSize: 10)),
+                                    Text("₹$amt", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            )
+                        ).toList(),
+                      )
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 12),
 
-                // 4. Cancellation Policy
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    "Cancellation Policy: Orders cannot be cancelled once packed for delivery. In case of unexpected delays, a refund will be provided, if applicable.",
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11, height: 1.4),
+                // 5. Bill Details
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Bill Details", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      const SizedBox(height: 12),
+                      _buildBillRow("Item Total", itemTotal),
+                      _buildBillRow("Handling Charge", handlingFee, tooltip: "Handling fees help us serve you better"),
+                      _buildBillRow("Delivery Fee", deliveryFee, isStrike: deliveryFee == 0, strikeText: "25"),
+                      if (_tipAmount > 0) _buildBillRow("Delivery Tip", _tipAmount),
+                      if (_donateToFeedingIndia) _buildBillRow("Donation", donation),
+
+                      const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("To Pay", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                          Text("₹${toPay.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                        ],
+                      ),
+
+                      // Savings Tag
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F2F1), // Light Teal
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF80CBC4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.savings_outlined, size: 16, color: Color(0xFF00796B)),
+                            const SizedBox(width: 8),
+                            Text("You saved ₹${savings.toStringAsFixed(0)} on this order!",
+                                style: const TextStyle(color: Color(0xFF004D40), fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+
+                // 6. Feeding India Toggle
+                Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.volunteer_activism, color: Colors.red, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Feeding India Donation", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text("Help feed the needy for just ₹2", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _donateToFeedingIndia,
+                        onChanged: (v) => setState(() => _donateToFeedingIndia = v),
+                        activeColor: AppTheme.swiggyOrange,
+                      )
+                    ],
                   ),
                 ),
               ],
@@ -123,40 +272,56 @@ class _CartScreenState extends State<CartScreen> {
       bottomSheet: Consumer<CartProvider>(
         builder: (context, cart, _) {
           if (cart.items.isEmpty) return const SizedBox.shrink();
-
-          final total = cart.totalAmount + 5.00 + (cart.totalAmount > 100 ? 0 : 30);
+          final toPay = cart.totalAmount + 4.0 + (cart.totalAmount > 199 ? 0 : 25) + _tipAmount + (_donateToFeedingIndia ? 2 : 0);
 
           return Container(
+            color: Colors.white,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
-            ),
             child: SafeArea(
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Address Strip
+                  Row(
                     children: [
-                      Text("₹${total.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                      const Text("TOTAL", style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.location_on, size: 16, color: AppTheme.swiggyOrange),
+                      const SizedBox(width: 4),
+                      Text("Delivering to Home", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade800)),
+                      const Spacer(),
+                      Text("Change", style: TextStyle(color: AppTheme.swiggyOrange, fontWeight: FontWeight.bold, fontSize: 12)),
                     ],
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : () => _placeOrder(cart),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.qcGreen,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text("Place Order", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 12),
+
+                  // Pay Button
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : () => _placeOrder(cart),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.qcGreen, // Green for "Go"
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                  )
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("₹${toPay.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const Text("TOTAL", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white70)),
+                          ],
+                        ),
+                        const Row(
+                          children: [
+                            Text("Proceed to Pay", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 18)
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -171,17 +336,17 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.grey.shade100, blurRadius: 10)]),
-            child: Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey.shade400),
-          ),
+          Image.network("[https://cdn-icons-png.flaticon.com/512/11329/11329060.png](https://cdn-icons-png.flaticon.com/512/11329/11329060.png)", height: 150),
           const SizedBox(height: 20),
-          const Text("Your cart is empty", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Your cart is empty", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text("Add items to start a cart", style: TextStyle(color: Colors.grey)),
+          const Text("You can go to home page to view more items.", style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 20),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text("Start Shopping"))
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.swiggyOrange),
+              child: const Text("See restaurants near you")
+          )
         ],
       ),
     );
@@ -190,36 +355,42 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildCartRow(CartItem item, CartProvider cart) {
     return Row(
       children: [
-        // Name and Unit
+        // Veg/Non-Veg icon could go here
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(border: Border.all(color: Colors.green), borderRadius: BorderRadius.circular(4)),
+          child: const Icon(Icons.circle, size: 8, color: Colors.green),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.product.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-              Text(item.product.unitText, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(item.product.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(item.product.unitText, style: const TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 4),
-              Text("₹${item.product.price.toInt()}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text("₹${item.product.price.toInt()}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
-
-        // Counter
         Container(
-          height: 32,
+          height: 36,
           decoration: BoxDecoration(
-            color: AppTheme.qcGreen,
-            borderRadius: BorderRadius.circular(6),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.qcGreen),
+              boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))]
           ),
           child: Row(
             children: [
               InkWell(
                 onTap: () => cart.removeItem(item.product.id),
-                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.remove, color: Colors.white, size: 14)),
+                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Icon(Icons.remove, color: AppTheme.qcGreen, size: 16)),
               ),
-              Text("${item.quantity}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+              Text("${item.quantity}", style: const TextStyle(color: AppTheme.qcGreen, fontWeight: FontWeight.bold, fontSize: 14)),
               InkWell(
                 onTap: () => cart.addItem(item.product),
-                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.add, color: Colors.white, size: 14)),
+                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Icon(Icons.add, color: AppTheme.qcGreen, size: 16)),
               ),
             ],
           ),
@@ -228,30 +399,30 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildBillRow(String label, double amount, {bool isTotal = false, bool isStrike = false}) {
+  Widget _buildBillRow(String label, double amount, {bool isTotal = false, bool isStrike = false, String? strikeText, String? tooltip}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              fontSize: isTotal ? 15 : 13,
-              color: isTotal ? Colors.black : Colors.grey.shade700
+              fontSize: isTotal ? 16 : 13,
+              color: isTotal ? Colors.black : Colors.grey.shade700,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal
           )),
-          Row(
-            children: [
-              if (isStrike) ...[
-                Text("₹$amount", style: const TextStyle(decoration: TextDecoration.lineThrough, fontSize: 12, color: Colors.grey)),
-                const SizedBox(width: 4),
-                const Text("FREE", style: TextStyle(color: AppTheme.qcGreen, fontWeight: FontWeight.bold, fontSize: 12)),
-              ] else
-                Text("₹${amount.toStringAsFixed(2)}", style: TextStyle(
-                    fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
-                    fontSize: isTotal ? 15 : 13
-                )),
-            ],
-          )
+          if (tooltip != null) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.info_outline, size: 12, color: Colors.grey),
+          ],
+          const Spacer(),
+          if (isStrike) ...[
+            Text("₹$strikeText", style: const TextStyle(decoration: TextDecoration.lineThrough, fontSize: 12, color: Colors.grey)),
+            const SizedBox(width: 4),
+            const Text("FREE", style: TextStyle(color: AppTheme.qcGreen, fontWeight: FontWeight.bold, fontSize: 12)),
+          ] else
+            Text("₹${amount.toStringAsFixed(2)}", style: TextStyle(
+                fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
+                fontSize: isTotal ? 16 : 13
+            )),
         ],
       ),
     );
@@ -259,32 +430,15 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _placeOrder(CartProvider cart) async {
     setState(() => _isLoading = true);
+    // Simulate network delay for effect
+    await Future.delayed(const Duration(seconds: 2));
     try {
       await cart.placeOrder();
       if(mounted) {
-        showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => AlertDialog(
-              content: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle, color: AppTheme.qcGreen, size: 60),
-                  SizedBox(height: 16),
-                  Text("Order Placed!", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  Text("Your items are on the way.", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      Navigator.pop(context); // Close cart
-                    },
-                    child: const Text("OK")
-                )
-              ],
-            )
+        // Show success animation/dialog (Instamart style)
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Order Placed Successfully!"), backgroundColor: AppTheme.qcGreen),
         );
       }
     } catch (e) {

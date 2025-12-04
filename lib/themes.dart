@@ -2,24 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Swiggy Instamart-inspired Palette
-  static const Color qcGreen = Color(0xFF0C831F); // The core brand color
-  static const Color qcGreenDark = Color(0xFF096316);
-  static const Color qcGreenLight = Color(0xFFF0FFF4); // Very light green for backgrounds
-  static const Color qcAccentBlue = Color(0xFF256FEF);
-  static const Color qcDiscountRed = Color(0xFFD32F2F);
+  // Swiggy Instamart Brand Colors
+  static const Color swiggyOrange = Color(0xFFFC8019); // Main Swiggy Brand
+  static const Color instamartPurple = Color(0xFF9136E6); // The distinctive Instamart gradient start
+  static const Color instamartPink = Color(0xFFE535AB); // Gradient end
 
-  // Backgrounds
-  static const Color background = Color(0xFFF5F7FD); // Slightly blue-ish grey
+  static const Color qcGreen = Color(0xFF1B8021); // "Veg" or "Success" green
+  static const Color qcGreenLight = Color(0xFFE8F6EA);
+
+  static const Color background = Color(0xFFF4F4F5); // Cool grey background
   static const Color surface = Colors.white;
-  static const Color border = Color(0xFFE0E0E0);
+  static const Color border = Color(0xFFE2E2E7);
 
-  // Typography
-  static const Color textPrimary = Color(0xFF1F1F1F); // Softer black
-  static const Color textSecondary = Color(0xFF6B6B6B);
-  static const Color textTertiary = Color(0xFF9E9E9E);
+  // Typography Colors
+  static const Color textPrimary = Color(0xFF1C1C28); // Almost black
+  static const Color textSecondary = Color(0xFF555561); // Readable grey
+  static const Color textTertiary = Color(0xFF8F90A6);
 
-  static const Color primaryColor = qcGreen;
+  static const Color primaryColor = swiggyOrange;
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -28,22 +28,23 @@ class AppTheme {
       scaffoldBackgroundColor: background,
       primaryColor: primaryColor,
 
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: qcGreen,
-        surface: surface,
-        background: background,
-        primary: qcGreen,
-        secondary: qcAccentBlue,
-        error: qcDiscountRed,
-      ),
-
+      // Default font family similar to Proxima Nova (Inter is the closest free alternative)
       textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 22),
-        titleLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
+        displayLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5),
+        titleLarge: const TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: -0.2),
         titleMedium: const TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
         bodyLarge: const TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
-        bodyMedium: const TextStyle(color: textSecondary, fontSize: 12, height: 1.4, fontWeight: FontWeight.w500),
-        labelSmall: const TextStyle(color: textTertiary, fontSize: 10, fontWeight: FontWeight.w700),
+        bodyMedium: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4, fontWeight: FontWeight.w400),
+        labelSmall: const TextStyle(color: textTertiary, fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: swiggyOrange,
+        surface: surface,
+        background: background,
+        primary: swiggyOrange,
+        secondary: instamartPurple,
+        error: const Color(0xFFE53935),
       ),
 
       cardTheme: CardThemeData(
@@ -52,36 +53,43 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: border, width: 0.5),
+          side: const BorderSide(color: border, width: 0.8),
         ),
       ),
 
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: textPrimary),
+        titleTextStyle: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: qcGreen,
+          backgroundColor: swiggyOrange,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: qcGreen,
-          side: const BorderSide(color: qcGreen),
+          foregroundColor: swiggyOrange,
+          side: const BorderSide(color: swiggyOrange),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
         ),
+      ),
+
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFEEEEEE),
+        thickness: 1,
+        space: 1,
       ),
     );
   }
